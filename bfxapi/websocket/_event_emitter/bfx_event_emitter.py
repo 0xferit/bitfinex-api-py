@@ -32,6 +32,7 @@ _ONCE_PER_SUBSCRIPTION = [
 
 _COMMON = [
     "disconnected",
+    "heartbeat",
     "t_ticker_update",
     "f_ticker_update",
     "t_trade_execution",

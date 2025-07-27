@@ -266,9 +266,11 @@ class BfxWebSocketClient(Connection):
                 if (
                     isinstance(message, list)
                     and message[0] == 0
-                    and message[1] != Connection._HEARTBEAT
                 ):
-                    self.__handler.handle(message[1], message[2])
+                    if message[1] == Connection._HEARTBEAT:
+                        self.__event_emitter.emit("heartbeat")
+                    else:
+                        self.__handler.handle(message[1], message[2])
 
     async def __new_bucket(self) -> BfxWebSocketBucket:
         bucket = BfxWebSocketBucket(self._host, self.__event_emitter)
