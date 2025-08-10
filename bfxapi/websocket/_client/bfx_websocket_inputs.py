@@ -72,22 +72,26 @@ class BfxWebSocketInputs:
         if flags is not None:
             flags = POST_ONLY | flags
 
-        await self.__handle_websocket_input(
-            "ou",
-            {
-                "id": id,
-                "amount": amount,
-                "price": price,
-                "cid": cid,
-                "cid_date": cid_date,
-                "gid": gid,
-                "lev": lev,
-                "delta": delta,
-                "price_aux_limit": price_aux_limit,
-                "price_trailing": price_trailing,
-                "tif": tif,
-            },
-        )
+        payload: Dict[str, Any] = {
+            "id": id,
+            "amount": amount,
+            "price": price,
+            "cid": cid,
+            "cid_date": cid_date,
+            "gid": gid,
+            "lev": lev,
+            "delta": delta,
+            "price_aux_limit": price_aux_limit,
+            "price_trailing": price_trailing,
+            "tif": tif,
+        }
+
+        # Include flags only when explicitly provided to avoid overwriting
+        # existing server-side flags with null/omitted values.
+        if flags is not None:
+            payload["flags"] = flags
+
+        await self.__handle_websocket_input("ou", payload)
 
         # Note: flags are included in the payload only when explicitly provided,
         # so that existing flags on the order remain unchanged when omitted.
