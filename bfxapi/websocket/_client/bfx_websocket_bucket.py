@@ -66,9 +66,11 @@ class BfxWebSocketBucket(Connection):
                     if (
                         (chan_id := cast(int, message[0]))
                         and (subscription := self.__subscriptions.get(chan_id))
-                        and (message[1] != Connection._HEARTBEAT)
                     ):
-                        self.__handler.handle(subscription, message[1:])
+                        if message[1] == Connection._HEARTBEAT:
+                            self.__event_emitter.emit("heartbeat", subscription)
+                        else:
+                            self.__handler.handle(subscription, message[1:])
 
     def __on_subscribed(self, message: Dict[str, Any]) -> None:
         chan_id = cast(int, message["chan_id"])

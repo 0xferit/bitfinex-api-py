@@ -238,6 +238,33 @@ The same can be done without using decorators:
 bfx.wss.on("candles_update", callback=on_candles_update)
 ```
 
+### Heartbeat events
+
+The WebSocket server sends periodic heartbeat messages to keep connections alive. 
+These are now exposed as `heartbeat` events that you can listen to:
+
+```python
+from typing import Optional
+from bfxapi.websocket.subscriptions import Subscription
+
+@bfx.wss.on("heartbeat")
+def on_heartbeat(subscription: Optional[Subscription]) -> None:
+    if subscription:
+        # Heartbeat for a specific subscription (public channels)
+        channel = subscription["channel"]
+        symbol = subscription.get("symbol", "N/A")
+        print(f"Heartbeat for {channel}: {symbol}")
+    else:
+        # Heartbeat for authenticated connection (channel 0)
+        print("Heartbeat on authenticated connection")
+```
+
+**Note:** The heartbeat handler receives:
+- `subscription` parameter containing subscription details for public channel heartbeats
+- `None` for authenticated connection heartbeats (channel 0)
+
+---
+
 # Advanced features
 
 ## Using custom notifications
