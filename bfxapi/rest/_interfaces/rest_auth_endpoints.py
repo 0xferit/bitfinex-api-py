@@ -141,10 +141,14 @@ class RestAuthEndpoints(Interface):
         price_trailing: Optional[Union[str, float, Decimal]] = None,
         tif: Optional[str] = None,
     ) -> Notification[Order]:
-        """Update an existing order (maintains POST_ONLY)."""
-        # If flags are being updated, ensure POST_ONLY is included
+        """Update an existing order (ALWAYS maintains POST_ONLY)."""
+        # ALWAYS include POST_ONLY, even if flags not provided
+        # This prevents bypass through flag-less updates
         if flags is not None:
             flags = POST_ONLY | flags
+        else:
+            # Force POST_ONLY even when no flags specified
+            flags = POST_ONLY
         
         body = {
             "id": id,
@@ -153,7 +157,7 @@ class RestAuthEndpoints(Interface):
             "cid": cid,
             "cid_date": cid_date,
             "gid": gid,
-            "flags": flags,
+            "flags": flags,  # Always has value now
             "lev": lev,
             "delta": delta,
             "price_aux_limit": price_aux_limit,
