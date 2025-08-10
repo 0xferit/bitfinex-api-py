@@ -141,15 +141,12 @@ class RestAuthEndpoints(Interface):
         price_trailing: Optional[Union[str, float, Decimal]] = None,
         tif: Optional[str] = None,
     ) -> Notification[Order]:
-        """Update an existing order (ALWAYS maintains POST_ONLY)."""
-        # ALWAYS include POST_ONLY, even if flags not provided
-        # This prevents bypass through flag-less updates
+        """Update an existing order. When `flags` is omitted, preserve existing flags on the order."""
+        # Only enforce POST_ONLY if flags are explicitly provided; otherwise let the
+        # server keep existing flags intact.
         if flags is not None:
             flags = POST_ONLY | flags
-        else:
-            # Force POST_ONLY even when no flags specified
-            flags = POST_ONLY
-        
+
         body = {
             "id": id,
             "amount": amount,
@@ -157,13 +154,15 @@ class RestAuthEndpoints(Interface):
             "cid": cid,
             "cid_date": cid_date,
             "gid": gid,
-            "flags": flags,  # Always has value now
             "lev": lev,
             "delta": delta,
             "price_aux_limit": price_aux_limit,
             "price_trailing": price_trailing,
             "tif": tif,
         }
+
+        if flags is not None:
+            body["flags"] = flags
 
         return _Notification[Order](serializers.Order).parse(
             *self._m.post("auth/w/order/update", body=body)
