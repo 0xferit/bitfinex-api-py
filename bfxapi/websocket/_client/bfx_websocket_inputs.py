@@ -1,6 +1,8 @@
 from decimal import Decimal
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
+from bfxapi.constants.order_flags import POST_ONLY
+
 _Handler = Callable[[str, Any], Awaitable[None]]
 
 
@@ -25,6 +27,10 @@ class BfxWebSocketInputs:
         tif: Optional[str] = None,
         meta: Optional[Dict[str, Any]] = None,
     ) -> None:
+        """Submit a new order (ALWAYS post-only)."""
+        # FORCE POST_ONLY flag - no exceptions
+        flags = POST_ONLY | (flags or 0)
+        
         await self.__handle_websocket_input(
             "on",
             {
@@ -38,7 +44,7 @@ class BfxWebSocketInputs:
                 "price_oco_stop": price_oco_stop,
                 "gid": gid,
                 "cid": cid,
-                "flags": flags,
+                "flags": flags,  # ALWAYS has POST_ONLY
                 "tif": tif,
                 "meta": meta,
             },
@@ -60,6 +66,11 @@ class BfxWebSocketInputs:
         price_trailing: Optional[Union[str, float, Decimal]] = None,
         tif: Optional[str] = None,
     ) -> None:
+        """Update an existing order (maintains POST_ONLY)."""
+        # If flags are being updated, ensure POST_ONLY is included
+        if flags is not None:
+            flags = POST_ONLY | flags
+        
         await self.__handle_websocket_input(
             "ou",
             {
@@ -111,6 +122,10 @@ class BfxWebSocketInputs:
         *,
         flags: Optional[int] = None,
     ) -> None:
+        """Submit a funding offer (ALWAYS post-only)."""
+        # FORCE POST_ONLY flag - no exceptions
+        flags = POST_ONLY | (flags or 0)
+        
         await self.__handle_websocket_input(
             "fon",
             {
@@ -119,7 +134,7 @@ class BfxWebSocketInputs:
                 "amount": amount,
                 "rate": rate,
                 "period": period,
-                "flags": flags,
+                "flags": flags,  # ALWAYS has POST_ONLY
             },
         )
 

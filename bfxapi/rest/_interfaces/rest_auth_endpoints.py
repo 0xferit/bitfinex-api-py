@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
+from bfxapi.constants.order_flags import POST_ONLY
 from bfxapi.rest._interface import Interface
 from bfxapi.types import (
     BalanceAvailable,
@@ -100,6 +101,10 @@ class RestAuthEndpoints(Interface):
         tif: Optional[str] = None,
         meta: Optional[Dict[str, Any]] = None,
     ) -> Notification[Order]:
+        """Submit a new order (ALWAYS post-only)."""
+        # FORCE POST_ONLY flag - no exceptions
+        flags = POST_ONLY | (flags or 0)
+        
         body = {
             "type": type,
             "symbol": symbol,
@@ -111,7 +116,7 @@ class RestAuthEndpoints(Interface):
             "price_oco_stop": price_oco_stop,
             "gid": gid,
             "cid": cid,
-            "flags": flags,
+            "flags": flags,  # ALWAYS has POST_ONLY
             "tif": tif,
             "meta": meta,
         }
@@ -136,6 +141,11 @@ class RestAuthEndpoints(Interface):
         price_trailing: Optional[Union[str, float, Decimal]] = None,
         tif: Optional[str] = None,
     ) -> Notification[Order]:
+        """Update an existing order (maintains POST_ONLY)."""
+        # If flags are being updated, ensure POST_ONLY is included
+        if flags is not None:
+            flags = POST_ONLY | flags
+        
         body = {
             "id": id,
             "amount": amount,
@@ -384,13 +394,17 @@ class RestAuthEndpoints(Interface):
         *,
         flags: Optional[int] = None,
     ) -> Notification[FundingOffer]:
+        """Submit a funding offer (ALWAYS post-only)."""
+        # FORCE POST_ONLY flag - no exceptions
+        flags = POST_ONLY | (flags or 0)
+        
         body = {
             "type": type,
             "symbol": symbol,
             "amount": amount,
             "rate": rate,
             "period": period,
-            "flags": flags,
+            "flags": flags,  # ALWAYS has POST_ONLY
         }
 
         return _Notification[FundingOffer](serializers.FundingOffer).parse(

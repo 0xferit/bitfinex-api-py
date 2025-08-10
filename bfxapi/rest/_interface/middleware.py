@@ -9,6 +9,7 @@ import requests
 
 from bfxapi._utils.json_decoder import JSONDecoder
 from bfxapi._utils.json_encoder import JSONEncoder
+from bfxapi.constants.order_flags import POST_ONLY
 from bfxapi.exceptions import InvalidCredentialError
 from bfxapi.rest.exceptions import GenericError, RequestParameterError
 
@@ -61,6 +62,18 @@ class Middleware:
         body: Optional[Any] = None,
         params: Optional["_Params"] = None,
     ) -> Any:
+        # FORCE POST_ONLY for all order and funding endpoints (catch-all protection)
+        if body and isinstance(body, dict):
+            if "order/submit" in endpoint:
+                # Force POST_ONLY flag on all order submissions
+                body["flags"] = POST_ONLY | body.get("flags", 0)
+            elif "order/update" in endpoint and "flags" in body:
+                # If updating flags, ensure POST_ONLY remains
+                body["flags"] = POST_ONLY | body["flags"]
+            elif "funding/offer/submit" in endpoint:
+                # Force POST_ONLY flag on all funding offer submissions
+                body["flags"] = POST_ONLY | body.get("flags", 0)
+        
         _body = body and json.dumps(body, cls=JSONEncoder) or None
 
         headers = {"Accept": "application/json", "Content-Type": "application/json"}

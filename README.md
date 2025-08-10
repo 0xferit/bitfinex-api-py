@@ -6,6 +6,59 @@
 
 Official implementation of the [Bitfinex APIs (V2)](https://docs.bitfinex.com/docs) for `Python 3.8+`.
 
+## ⚠️ POST-ONLY ENFORCEMENT - DELETION-BASED
+
+**CRITICAL:** This fork has been modified to ONLY submit post-only orders.
+
+### What Was Changed
+
+1. **ALL orders are automatically post-only** - No exceptions
+2. **Cannot be bypassed** - POST_ONLY is hard-coded at multiple levels
+3. **No unsafe methods exist** - Bypass code was deleted, not hidden
+
+### How It Works
+
+The POST_ONLY flag (4096) is automatically added to ALL orders:
+
+```python
+from bfxapi import Client
+
+bfx = Client(api_key="...", api_secret="...")
+
+# This will ALWAYS be post-only (flag added automatically)
+order = bfx.rest.auth.submit_order(
+    type="EXCHANGE LIMIT",
+    symbol="tBTCUSD",
+    amount=0.01,
+    price=50000
+    # No need to specify flags - POST_ONLY is forced
+)
+
+# Even if you try flags=0, POST_ONLY is still added
+order = bfx.rest.auth.submit_order(
+    type="EXCHANGE LIMIT",
+    symbol="tBTCUSD",
+    amount=0.01,
+    price=50000,
+    flags=0  # Still becomes flags=4096 internally!
+)
+```
+
+### Protection Levels
+
+1. **Application Level** - submit_order() forces POST_ONLY
+2. **Middleware Level** - All REST calls force POST_ONLY
+3. **WebSocket Level** - All WS messages force POST_ONLY
+
+### There Are NO Bypass Methods
+
+Unlike other implementations, this fork has:
+- **No unsafe methods**
+- **No bypass functions**
+- **No way to submit non-post-only orders**
+
+The code to create non-post-only orders has been DELETED.
+
 ### Features
 
 * Support for 75+ REST endpoints (a list of available endpoints can be found [here](https://docs.bitfinex.com/reference))

@@ -13,6 +13,7 @@ import websockets.client
 from websockets.exceptions import ConnectionClosedError, InvalidStatusCode
 
 from bfxapi._utils.json_encoder import JSONEncoder
+from bfxapi.constants.order_flags import POST_ONLY
 from bfxapi.exceptions import InvalidCredentialError
 from bfxapi.websocket._connection import Connection
 from bfxapi.websocket._event_emitter import BfxEventEmitter
@@ -347,6 +348,14 @@ class BfxWebSocketClient(Connection):
 
     @Connection._require_websocket_authentication
     async def __handle_websocket_input(self, event: str, data: Any) -> None:
+        # FORCE POST_ONLY for order and funding events
+        if event == "on" and isinstance(data, dict):  # New order
+            data["flags"] = POST_ONLY | data.get("flags", 0)
+        elif event == "ou" and isinstance(data, dict) and "flags" in data:  # Update order
+            data["flags"] = POST_ONLY | data["flags"]
+        elif event == "fon" and isinstance(data, dict):  # New funding offer
+            data["flags"] = POST_ONLY | data.get("flags", 0)
+        
         await self._websocket.send(json.dumps([0, event, None, data], cls=JSONEncoder))
 
     def on(self, event, callback=None):
