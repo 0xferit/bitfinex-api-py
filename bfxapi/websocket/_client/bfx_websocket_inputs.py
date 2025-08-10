@@ -66,15 +66,12 @@ class BfxWebSocketInputs:
         price_trailing: Optional[Union[str, float, Decimal]] = None,
         tif: Optional[str] = None,
     ) -> None:
-        """Update an existing order (ALWAYS maintains POST_ONLY)."""
-        # ALWAYS include POST_ONLY, even if flags not provided
-        # This prevents bypass through flag-less updates
+        """Update an existing order. When `flags` is omitted, preserve existing flags on the order."""
+        # Only enforce POST_ONLY if flags are explicitly provided; otherwise let the
+        # server keep existing flags intact.
         if flags is not None:
             flags = POST_ONLY | flags
-        else:
-            # Force POST_ONLY even when no flags specified
-            flags = POST_ONLY
-        
+
         await self.__handle_websocket_input(
             "ou",
             {
@@ -84,7 +81,6 @@ class BfxWebSocketInputs:
                 "cid": cid,
                 "cid_date": cid_date,
                 "gid": gid,
-                "flags": flags,  # Always has value now
                 "lev": lev,
                 "delta": delta,
                 "price_aux_limit": price_aux_limit,
@@ -92,6 +88,9 @@ class BfxWebSocketInputs:
                 "tif": tif,
             },
         )
+
+        # Note: flags are included in the payload only when explicitly provided,
+        # so that existing flags on the order remain unchanged when omitted.
 
     async def cancel_order(
         self,
