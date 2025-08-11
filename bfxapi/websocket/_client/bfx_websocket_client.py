@@ -14,7 +14,6 @@ from websockets.exceptions import ConnectionClosedError, InvalidStatusCode
 
 from bfxapi._utils.json_encoder import JSONEncoder
 from bfxapi._utils.post_only_enforcement import enforce_post_only
-from bfxapi.constants.order_flags import POST_ONLY
 from bfxapi.exceptions import InvalidCredentialError
 from bfxapi.websocket._connection import Connection
 from bfxapi.websocket._event_emitter import BfxEventEmitter
@@ -265,10 +264,7 @@ class BfxWebSocketClient(Connection):
 
                         self._authentication = True
 
-                if (
-                    isinstance(message, list)
-                    and message[0] == 0
-                ):
+                if isinstance(message, list) and message[0] == 0:
                     if message[1] == Connection._HEARTBEAT:
                         self.__event_emitter.emit("heartbeat", None)
                     else:
@@ -361,7 +357,7 @@ class BfxWebSocketClient(Connection):
                 data.pop("flags", None)
         elif event == "fon" and isinstance(data, dict):  # New funding offer
             data["flags"] = enforce_post_only(data.get("flags"))
-        
+
         await self._websocket.send(json.dumps([0, event, None, data], cls=JSONEncoder))
 
     def on(self, event, callback=None):
