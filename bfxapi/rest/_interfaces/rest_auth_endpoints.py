@@ -141,7 +141,10 @@ class RestAuthEndpoints(Interface):
         price_trailing: Optional[Union[str, float, Decimal]] = None,
         tif: Optional[str] = None,
     ) -> Notification[Order]:
-        """Update an existing order. When `flags` is omitted, preserve existing flags on the order."""
+        """Update an existing order.
+
+        When `flags` is omitted, preserve existing flags on the order.
+        """
         # Only enforce POST_ONLY if flags are explicitly provided; otherwise let the
         # server keep existing flags intact.
         if flags is not None:

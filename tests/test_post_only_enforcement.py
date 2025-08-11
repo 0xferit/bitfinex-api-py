@@ -143,7 +143,10 @@ class TestMiddlewarePostOnly(unittest.TestCase):
     @patch("bfxapi.rest._interface.middleware.requests.post")
     @patch("bfxapi.rest._interface.middleware.enforce_post_only")
     def test_middleware_order_update_enforcement(self, mock_enforce, mock_post):
-        """Test middleware enforces POST_ONLY for order/update endpoint only when flags present."""
+        """Test middleware enforces POST_ONLY for order/update endpoint.
+
+        Only enforced when flags are explicitly present.
+        """
         from bfxapi.rest._interface.middleware import Middleware
 
         mock_enforce.return_value = POST_ONLY
@@ -191,7 +194,8 @@ class TestMiddlewarePostOnly(unittest.TestCase):
         }
         middleware.post("auth/w/funding/offer/submit", body)
 
-        # Verify enforce_post_only was called with None (since flags not in original body)
+        # Verify enforce_post_only was called with None
+        # (since flags not in original body)
         mock_enforce.assert_called_once()
 
 
