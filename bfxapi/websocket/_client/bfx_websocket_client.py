@@ -349,9 +349,13 @@ class BfxWebSocketClient(Connection):
         if event == "on" and isinstance(data, dict):  # New order
             data["flags"] = enforce_post_only(data.get("flags"))
         elif event == "ou" and isinstance(data, dict):  # Update order
-            # FORCE POST_ONLY flag on ALL order updates - no exceptions
-            # This ensures existing orders cannot bypass POST_ONLY
-            data["flags"] = enforce_post_only(data.get("flags"))
+            # When flags are explicitly provided, ensure POST_ONLY is set
+            # When flags are omitted, don't modify to preserve server-side flags
+            if "flags" in data and data["flags"] is not None:
+                data["flags"] = enforce_post_only(data["flags"])
+            elif "flags" in data and data["flags"] is None:
+                # Remove None flags to preserve server-side flags
+                data.pop("flags", None)
         elif event == "fon" and isinstance(data, dict):  # New funding offer
             data["flags"] = enforce_post_only(data.get("flags"))
 
