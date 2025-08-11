@@ -13,6 +13,7 @@ import websockets.client
 from websockets.exceptions import ConnectionClosedError, InvalidStatusCode
 
 from bfxapi._utils.json_encoder import JSONEncoder
+from bfxapi._utils.post_only_enforcement import enforce_post_only
 from bfxapi.constants.order_flags import POST_ONLY
 from bfxapi.exceptions import InvalidCredentialError
 from bfxapi.websocket._connection import Connection
@@ -350,16 +351,16 @@ class BfxWebSocketClient(Connection):
     async def __handle_websocket_input(self, event: str, data: Any) -> None:
         # FORCE POST_ONLY for order and funding events
         if event == "on" and isinstance(data, dict):  # New order
-            data["flags"] = POST_ONLY | data.get("flags", 0)
+            data["flags"] = enforce_post_only(data.get("flags"))
         elif event == "ou" and isinstance(data, dict):  # Update order
             # Only enforce POST_ONLY if flags are explicitly provided; otherwise
             # preserve existing order flags by not sending the field.
             if "flags" in data and data["flags"] is not None:
-                data["flags"] = POST_ONLY | data.get("flags", 0)
+                data["flags"] = enforce_post_only(data.get("flags"))
             else:
                 data.pop("flags", None)
         elif event == "fon" and isinstance(data, dict):  # New funding offer
-            data["flags"] = POST_ONLY | data.get("flags", 0)
+            data["flags"] = enforce_post_only(data.get("flags"))
         
         await self._websocket.send(json.dumps([0, event, None, data], cls=JSONEncoder))
 

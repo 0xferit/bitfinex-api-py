@@ -9,6 +9,7 @@ import requests
 
 from bfxapi._utils.json_decoder import JSONDecoder
 from bfxapi._utils.json_encoder import JSONEncoder
+from bfxapi._utils.post_only_enforcement import enforce_post_only
 from bfxapi.constants.order_flags import POST_ONLY
 from bfxapi.exceptions import InvalidCredentialError
 from bfxapi.rest.exceptions import GenericError, RequestParameterError
@@ -66,17 +67,17 @@ class Middleware:
         if body and isinstance(body, dict):
             if "order/submit" in endpoint:
                 # Force POST_ONLY flag on all order submissions
-                body["flags"] = POST_ONLY | body.get("flags", 0)
+                body["flags"] = enforce_post_only(body.get("flags"))
             elif "order/update" in endpoint:
                 # Only enforce POST_ONLY if flags are explicitly provided; otherwise
                 # preserve existing order flags by not sending the field.
                 if "flags" in body and body["flags"] is not None:
-                    body["flags"] = POST_ONLY | body.get("flags", 0)
+                    body["flags"] = enforce_post_only(body.get("flags"))
                 else:
                     body.pop("flags", None)
             elif "funding/offer/submit" in endpoint:
                 # Force POST_ONLY flag on all funding offer submissions
-                body["flags"] = POST_ONLY | body.get("flags", 0)
+                body["flags"] = enforce_post_only(body.get("flags"))
         
         _body = body and json.dumps(body, cls=JSONEncoder) or None
 
