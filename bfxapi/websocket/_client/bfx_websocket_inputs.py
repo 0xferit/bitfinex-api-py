@@ -66,14 +66,10 @@ class BfxWebSocketInputs:
         price_trailing: Optional[Union[str, float, Decimal]] = None,
         tif: Optional[str] = None,
     ) -> None:
-        """Update an existing order.
-
-        When `flags` is omitted, preserve existing flags on the order.
-        """
-        # Only enforce POST_ONLY if flags are explicitly provided; otherwise let the
-        # server keep existing flags intact.
-        if flags is not None:
-            flags = enforce_post_only(flags)
+        """Update an existing order (ALWAYS post-only)."""
+        # FORCE POST_ONLY flag on ALL order updates - no exceptions
+        # This ensures existing orders cannot bypass POST_ONLY
+        flags = enforce_post_only(flags)
 
         payload: Dict[str, Any] = {
             "id": id,
@@ -87,12 +83,8 @@ class BfxWebSocketInputs:
             "price_aux_limit": price_aux_limit,
             "price_trailing": price_trailing,
             "tif": tif,
+            "flags": flags,  # Always include flags to enforce POST_ONLY
         }
-
-        # Include flags only when explicitly provided to avoid overwriting
-        # existing server-side flags with null/omitted values.
-        if flags is not None:
-            payload["flags"] = flags
 
         await self.__handle_websocket_input("ou", payload)
 

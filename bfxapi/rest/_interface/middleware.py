@@ -68,12 +68,9 @@ class Middleware:
                 # Force POST_ONLY flag on all order submissions
                 body["flags"] = enforce_post_only(body.get("flags"))
             elif "order/update" in endpoint:
-                # Only enforce POST_ONLY if flags are explicitly provided; otherwise
-                # preserve existing order flags by not sending the field.
-                if "flags" in body and body["flags"] is not None:
-                    body["flags"] = enforce_post_only(body.get("flags"))
-                else:
-                    body.pop("flags", None)
+                # FORCE POST_ONLY flag on ALL order updates - no exceptions
+                # This ensures existing orders cannot bypass POST_ONLY
+                body["flags"] = enforce_post_only(body.get("flags"))
             elif "funding/offer/submit" in endpoint:
                 # Force POST_ONLY flag on all funding offer submissions
                 body["flags"] = enforce_post_only(body.get("flags"))
