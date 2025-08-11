@@ -13,12 +13,12 @@ Official implementation of the [Bitfinex APIs (V2)](https://docs.bitfinex.com/do
 ### What Was Changed
 
 1. **ALL orders are automatically post-only** - No exceptions
-2. **Cannot be bypassed** - POST_ONLY is hard-coded at multiple levels
+2. **Cannot be bypassed** - POST_ONLY is hard-coded at multiple levels (orders only)
 3. **No unsafe methods exist** - Bypass code was deleted, not hidden
 
 ### How It Works
 
-The POST_ONLY flag (4096) is automatically added to ALL orders:
+The POST_ONLY flag (4096) is automatically added to ALL orders (not funding offers):
 
 ```python
 from bfxapi import Client
@@ -46,9 +46,9 @@ order = bfx.rest.auth.submit_order(
 
 ### Protection Levels
 
-1. **Application Level** - submit_order() forces POST_ONLY
-2. **Middleware Level** - All REST calls force POST_ONLY
-3. **WebSocket Level** - All WS messages force POST_ONLY
+1. **Application Level** - submit_order() and update_order() force POST_ONLY
+2. **Middleware Level** - Order submit/update REST calls force POST_ONLY
+3. **WebSocket Level** - Order submit/update WS messages force POST_ONLY
 
 ### There Are NO Bypass Methods
 
