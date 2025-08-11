@@ -1,5 +1,6 @@
 """
-Demonstrates heartbeat event handling for both public and authenticated WebSocket connections.
+Demonstrates heartbeat event handling for both public and authenticated
+WebSocket connections.
 
 Usage:
     python examples/websocket/heartbeat.py
@@ -14,7 +15,6 @@ from typing import Any, Dict, Optional
 
 from bfxapi import Client
 from bfxapi.websocket.subscriptions import Subscription
-
 
 # Initialize client with optional authentication
 api_key = os.getenv("BFX_API_KEY")
