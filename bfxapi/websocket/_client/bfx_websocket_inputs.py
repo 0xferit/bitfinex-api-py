@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Union
 
+from bfxapi._utils.post_only_enforcement import enforce_post_only
 from bfxapi.constants.order_flags import POST_ONLY
 
 _Handler = Callable[[str, Any], Awaitable[None]]
@@ -29,7 +30,7 @@ class BfxWebSocketInputs:
     ) -> None:
         """Submit a new order (ALWAYS post-only)."""
         # FORCE POST_ONLY flag - no exceptions
-        flags = POST_ONLY | (flags or 0)
+        flags = enforce_post_only(flags)
         
         await self.__handle_websocket_input(
             "on",
@@ -70,7 +71,7 @@ class BfxWebSocketInputs:
         # Only enforce POST_ONLY if flags are explicitly provided; otherwise let the
         # server keep existing flags intact.
         if flags is not None:
-            flags = POST_ONLY | flags
+            flags = enforce_post_only(flags)
 
         payload: Dict[str, Any] = {
             "id": id,
@@ -131,7 +132,7 @@ class BfxWebSocketInputs:
     ) -> None:
         """Submit a funding offer (ALWAYS post-only)."""
         # FORCE POST_ONLY flag - no exceptions
-        flags = POST_ONLY | (flags or 0)
+        flags = enforce_post_only(flags)
         
         await self.__handle_websocket_input(
             "fon",

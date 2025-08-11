@@ -1,6 +1,7 @@
 from decimal import Decimal
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
+from bfxapi._utils.post_only_enforcement import enforce_post_only
 from bfxapi.constants.order_flags import POST_ONLY
 from bfxapi.rest._interface import Interface
 from bfxapi.types import (
@@ -103,7 +104,7 @@ class RestAuthEndpoints(Interface):
     ) -> Notification[Order]:
         """Submit a new order (ALWAYS post-only)."""
         # FORCE POST_ONLY flag - no exceptions
-        flags = POST_ONLY | (flags or 0)
+        flags = enforce_post_only(flags)
         
         body = {
             "type": type,
@@ -145,7 +146,7 @@ class RestAuthEndpoints(Interface):
         # Only enforce POST_ONLY if flags are explicitly provided; otherwise let the
         # server keep existing flags intact.
         if flags is not None:
-            flags = POST_ONLY | flags
+            flags = enforce_post_only(flags)
 
         body = {
             "id": id,
@@ -399,7 +400,7 @@ class RestAuthEndpoints(Interface):
     ) -> Notification[FundingOffer]:
         """Submit a funding offer (ALWAYS post-only)."""
         # FORCE POST_ONLY flag - no exceptions
-        flags = POST_ONLY | (flags or 0)
+        flags = enforce_post_only(flags)
         
         body = {
             "type": type,
