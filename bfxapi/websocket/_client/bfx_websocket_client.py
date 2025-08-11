@@ -345,18 +345,11 @@ class BfxWebSocketClient(Connection):
 
     @Connection._require_websocket_authentication
     async def __handle_websocket_input(self, event: str, data: Any) -> None:
-        # FORCE POST_ONLY for order and funding events
+        # FORCE POST_ONLY for order events
         if event == "on" and isinstance(data, dict):  # New order
             data["flags"] = enforce_post_only(data.get("flags"))
         elif event == "ou" and isinstance(data, dict):  # Update order
-            # When flags are explicitly provided, ensure POST_ONLY is set
-            # When flags are omitted, don't modify to preserve server-side flags
-            if "flags" in data and data["flags"] is not None:
-                data["flags"] = enforce_post_only(data["flags"])
-            elif "flags" in data and data["flags"] is None:
-                # Remove None flags to preserve server-side flags
-                data.pop("flags", None)
-        elif event == "fon" and isinstance(data, dict):  # New funding offer
+            # FORCE POST_ONLY flag on ALL order updates - no exceptions
             data["flags"] = enforce_post_only(data.get("flags"))
 
         await self._websocket.send(json.dumps([0, event, None, data], cls=JSONEncoder))

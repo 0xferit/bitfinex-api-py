@@ -62,21 +62,13 @@ class Middleware:
         body: Optional[Any] = None,
         params: Optional["_Params"] = None,
     ) -> Any:
-        # FORCE POST_ONLY for all order and funding endpoints (catch-all protection)
+        # FORCE POST_ONLY for order endpoints (catch-all protection)
         if body and isinstance(body, dict):
             if "order/submit" in endpoint:
                 # Force POST_ONLY flag on all order submissions
                 body["flags"] = enforce_post_only(body.get("flags"))
             elif "order/update" in endpoint:
-                # When flags are explicitly provided, ensure POST_ONLY is set
-                # When flags are omitted, don't modify body to preserve server-side flags
-                if "flags" in body and body["flags"] is not None:
-                    body["flags"] = enforce_post_only(body["flags"])
-                elif "flags" in body and body["flags"] is None:
-                    # Remove None flags to preserve server-side flags
-                    body.pop("flags", None)
-            elif "funding/offer/submit" in endpoint:
-                # Force POST_ONLY flag on all funding offer submissions
+                # FORCE POST_ONLY flag on ALL order updates - no exceptions
                 body["flags"] = enforce_post_only(body.get("flags"))
 
         _body = body and json.dumps(body, cls=JSONEncoder) or None

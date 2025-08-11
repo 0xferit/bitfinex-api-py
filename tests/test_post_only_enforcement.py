@@ -46,13 +46,25 @@ class TestRESTEndpointsPostOnly(unittest.TestCase):
         from bfxapi.rest._interfaces.rest_auth_endpoints import RestAuthEndpoints
 
         self.mock_interface = MagicMock()
-        self.endpoints = RestAuthEndpoints(self.mock_interface)
+        # Initialize with a real-looking host, then replace transport with mock
+        self.endpoints = RestAuthEndpoints("https://api.bitfinex.com")
+        self.endpoints._m = self.mock_interface
 
+    @patch("bfxapi.types.serializers.Order.parse")
     @patch("bfxapi.rest._interfaces.rest_auth_endpoints.enforce_post_only")
-    def test_submit_order_enforces_post_only(self, mock_enforce):
+    def test_submit_order_enforces_post_only(self, mock_enforce, _mock_order_parse):
         """Test that submit_order enforces POST_ONLY flag."""
         mock_enforce.return_value = POST_ONLY | 64  # Simulating POST_ONLY + HIDDEN
-        self.mock_interface.post.return_value = ["on-req", None, None, []]
+        self.mock_interface.post.return_value = [
+            0,
+            "on-req",
+            None,
+            None,
+            [],
+            None,
+            "SUCCESS",
+            "",
+        ]
 
         self.endpoints.submit_order(
             type="LIMIT",
@@ -70,46 +82,67 @@ class TestRESTEndpointsPostOnly(unittest.TestCase):
         body = call_args.kwargs["body"]  # Body is passed as keyword argument
         self.assertIn("flags", body)
 
+    @patch("bfxapi.types.serializers.Order.parse")
     @patch("bfxapi.rest._interfaces.rest_auth_endpoints.enforce_post_only")
-    def test_update_order_enforces_post_only_when_flags_provided(self, mock_enforce):
-        """Test that update_order enforces POST_ONLY only when flags are provided."""
+    def test_update_order_always_enforces_post_only(
+        self, mock_enforce, _mock_order_parse
+    ):
+        """Test that update_order always enforces POST_ONLY and includes flags."""
         mock_enforce.return_value = POST_ONLY
-        self.mock_interface.post.return_value = ["ou-req", None, None, []]
+        self.mock_interface.post.return_value = [
+            0,
+            "ou-req",
+            None,
+            None,
+            [],
+            None,
+            "SUCCESS",
+            "",
+        ]
 
         # Test with flags provided
         self.endpoints.update_order(id=12345, flags=0)
-        mock_enforce.assert_called_once_with(0)
+        mock_enforce.assert_called_with(0)
 
-        # Reset mock
+        # Reset
         mock_enforce.reset_mock()
         self.mock_interface.post.reset_mock()
 
-        # Test without flags - should not call enforce_post_only
+        # Test without flags - still enforces
         self.endpoints.update_order(id=12345, amount=0.02)
-        mock_enforce.assert_not_called()
-
-        # Verify flags field is not in the body when not provided
-        call_args = self.mock_interface.post.call_args
-        body = call_args.kwargs["body"]
-        self.assertNotIn("flags", body)
-
-    @patch("bfxapi.rest._interfaces.rest_auth_endpoints.enforce_post_only")
-    def test_submit_funding_offer_enforces_post_only(self, mock_enforce):
-        """Test that submit_funding_offer enforces POST_ONLY flag."""
-        mock_enforce.return_value = POST_ONLY
-        self.mock_interface.post.return_value = ["fon-req", None, None, []]
-
-        self.endpoints.submit_funding_offer(
-            type="LIMIT", symbol="fUSD", amount=1000, rate=0.0001, period=2, flags=None
-        )
-
-        # Verify enforce_post_only was called
         mock_enforce.assert_called_once_with(None)
 
-        # Verify the post method was called with enforced flags
+        # Verify flags field is in the body
         call_args = self.mock_interface.post.call_args
         body = call_args.kwargs["body"]
         self.assertIn("flags", body)
+
+    @patch("bfxapi.types.serializers.FundingOffer.parse")
+    @patch("bfxapi.rest._interfaces.rest_auth_endpoints.enforce_post_only")
+    def test_submit_funding_offer_does_not_send_flags(
+        self, mock_enforce, _mock_fon_parse
+    ):
+        """Test that submit_funding_offer does not send or enforce flags."""
+        self.mock_interface.post.return_value = [
+            0,
+            "fon-req",
+            None,
+            None,
+            [],
+            None,
+            "SUCCESS",
+            "",
+        ]
+
+        self.endpoints.submit_funding_offer(
+            type="LIMIT", symbol="fUSD", amount=1000, rate=0.0001, period=2
+        )
+
+        mock_enforce.assert_not_called()
+
+        call_args = self.mock_interface.post.call_args
+        body = call_args.kwargs["body"]
+        self.assertNotIn("flags", body)
 
 
 class TestMiddlewarePostOnly(unittest.TestCase):
@@ -143,10 +176,7 @@ class TestMiddlewarePostOnly(unittest.TestCase):
     @patch("bfxapi.rest._interface.middleware.requests.post")
     @patch("bfxapi.rest._interface.middleware.enforce_post_only")
     def test_middleware_order_update_enforcement(self, mock_enforce, mock_post):
-        """Test middleware enforces POST_ONLY for order/update endpoint.
-
-        Only enforced when flags are explicitly present.
-        """
+        """Test middleware enforces POST_ONLY for order/update endpoint always."""
         from bfxapi.rest._interface.middleware import Middleware
 
         mock_enforce.return_value = POST_ONLY
@@ -164,18 +194,18 @@ class TestMiddlewarePostOnly(unittest.TestCase):
         # Reset mocks
         mock_enforce.reset_mock()
 
-        # Test without flags - should not enforce
+        # Test without flags - should enforce
         body = {"id": 12345, "amount": 0.02}
         middleware.post("auth/w/order/update", body)
-        mock_enforce.assert_not_called()
+        mock_enforce.assert_called_once_with(None)
 
-        # Verify flags field was removed
-        self.assertNotIn("flags", body)
+        # Verify flags field was added
+        self.assertIn("flags", body)
 
     @patch("bfxapi.rest._interface.middleware.requests.post")
     @patch("bfxapi.rest._interface.middleware.enforce_post_only")
     def test_middleware_funding_offer_enforcement(self, mock_enforce, mock_post):
-        """Test middleware enforces POST_ONLY for funding/offer/submit endpoint."""
+        """Test middleware does not enforce or send flags for funding/offer/submit."""
         from bfxapi.rest._interface.middleware import Middleware
 
         mock_enforce.return_value = POST_ONLY
@@ -194,9 +224,8 @@ class TestMiddlewarePostOnly(unittest.TestCase):
         }
         middleware.post("auth/w/funding/offer/submit", body)
 
-        # Verify enforce_post_only was called with None
-        # (since flags not in original body)
-        mock_enforce.assert_called_once()
+        # Verify enforce_post_only was not called
+        mock_enforce.assert_not_called()
 
 
 class TestWebSocketPostOnly(unittest.IsolatedAsyncioTestCase):
@@ -229,7 +258,9 @@ class TestWebSocketPostOnly(unittest.IsolatedAsyncioTestCase):
             self.assertIn("flags", data)
 
     async def test_websocket_inputs_update_order(self):
-        """Test WebSocket inputs update_order enforces POST_ONLY when flags provided."""
+        """
+        Test WS inputs update_order always enforces POST_ONLY and includes flags.
+        """
         from bfxapi.websocket._client.bfx_websocket_inputs import BfxWebSocketInputs
 
         mock_handler = AsyncMock()
@@ -253,17 +284,16 @@ class TestWebSocketPostOnly(unittest.IsolatedAsyncioTestCase):
             mock_enforce.reset_mock()
             mock_handler.reset_mock()
 
-            # Test without flags
+            # Test without flags - still enforced and included
             await inputs.update_order(id=12345, amount=0.02)
-            mock_enforce.assert_not_called()
+            mock_enforce.assert_called_once_with(None)
 
-            # Verify flags not in payload when not provided
             call_args = mock_handler.call_args
             data = call_args[0][1]
-            self.assertNotIn("flags", data)
+            self.assertIn("flags", data)
 
     async def test_websocket_inputs_submit_funding_offer(self):
-        """Test WebSocket inputs submit_funding_offer enforces POST_ONLY."""
+        """Test WebSocket inputs submit_funding_offer does not send flags."""
         from bfxapi.websocket._client.bfx_websocket_inputs import BfxWebSocketInputs
 
         mock_handler = AsyncMock()
@@ -278,19 +308,19 @@ class TestWebSocketPostOnly(unittest.IsolatedAsyncioTestCase):
                 type="LIMIT", symbol="fUSD", amount=1000, rate=0.0001, period=2
             )
 
-            # Verify enforce_post_only was called
-            mock_enforce.assert_called_once_with(None)
+            # Verify enforce_post_only not called
+            mock_enforce.assert_not_called()
 
-            # Verify handler was called with enforced flags
+            # Verify handler called without flags
             call_args = mock_handler.call_args
             event = call_args[0][0]
             data = call_args[0][1]
             self.assertEqual(event, "fon")
-            self.assertIn("flags", data)
+            self.assertNotIn("flags", data)
 
     @patch("bfxapi.websocket._client.bfx_websocket_client.enforce_post_only")
     async def test_websocket_client_handle_input_enforcement(self, mock_enforce):
-        """Test WebSocket client enforces POST_ONLY at transport level."""
+        """Test WebSocket client enforces POST_ONLY for orders only."""
         from bfxapi.websocket._client.bfx_websocket_client import BfxWebSocketClient
 
         mock_enforce.return_value = POST_ONLY
@@ -299,13 +329,21 @@ class TestWebSocketPostOnly(unittest.IsolatedAsyncioTestCase):
         client = BfxWebSocketClient.__new__(BfxWebSocketClient)
         client._websocket = MagicMock()
         client._websocket.send = AsyncMock()
+        # Simulate authenticated state to pass decorator checks
+        client._authentication = True
 
         # Make __handle_websocket_input accessible
         handle_input = client._BfxWebSocketClient__handle_websocket_input
 
         # Test new order
         await handle_input(
-            "on", {"type": "LIMIT", "symbol": "tBTCUSD", "amount": 0.01, "price": 50000}
+            "on",
+            {
+                "type": "LIMIT",
+                "symbol": "tBTCUSD",
+                "amount": 0.01,
+                "price": 50000,
+            },
         )
         mock_enforce.assert_called_with(None)
 
@@ -314,10 +352,10 @@ class TestWebSocketPostOnly(unittest.IsolatedAsyncioTestCase):
         await handle_input("ou", {"id": 12345, "flags": 64})
         mock_enforce.assert_called_with(64)
 
-        # Test funding offer
+        # Test funding offer - should not enforce or touch flags
         mock_enforce.reset_mock()
         await handle_input("fon", {"type": "LIMIT", "symbol": "fUSD", "amount": 1000})
-        mock_enforce.assert_called_with(None)
+        mock_enforce.assert_not_called()
 
 
 class TestIntegrationScenarios(unittest.TestCase):

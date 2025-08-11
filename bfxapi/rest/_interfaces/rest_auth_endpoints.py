@@ -141,11 +141,9 @@ class RestAuthEndpoints(Interface):
         price_trailing: Optional[Union[str, float, Decimal]] = None,
         tif: Optional[str] = None,
     ) -> Notification[Order]:
-        """Update an existing order (enforces post-only when flags provided)."""
-        # When flags are explicitly provided, ensure POST_ONLY is set
-        # When flags are omitted (None), don't send flags to preserve server-side flags
-        if flags is not None:
-            flags = enforce_post_only(flags)
+        """Update an existing order (ALWAYS post-only)."""
+        # FORCE POST_ONLY flag on ALL order updates - no exceptions
+        flags = enforce_post_only(flags)
 
         body = {
             "id": id,
@@ -159,10 +157,8 @@ class RestAuthEndpoints(Interface):
             "price_aux_limit": price_aux_limit,
             "price_trailing": price_trailing,
             "tif": tif,
+            "flags": flags,
         }
-
-        if flags is not None:
-            body["flags"] = flags
 
         return _Notification[Order](serializers.Order).parse(
             *self._m.post("auth/w/order/update", body=body)
@@ -397,9 +393,7 @@ class RestAuthEndpoints(Interface):
         *,
         flags: Optional[int] = None,
     ) -> Notification[FundingOffer]:
-        """Submit a funding offer (ALWAYS post-only)."""
-        # FORCE POST_ONLY flag - no exceptions
-        flags = enforce_post_only(flags)
+        """Submit a funding offer. Order flags are not applicable and are ignored."""
 
         body = {
             "type": type,
@@ -407,7 +401,6 @@ class RestAuthEndpoints(Interface):
             "amount": amount,
             "rate": rate,
             "period": period,
-            "flags": flags,  # ALWAYS has POST_ONLY
         }
 
         return _Notification[FundingOffer](serializers.FundingOffer).parse(
