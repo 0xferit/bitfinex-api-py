@@ -63,9 +63,8 @@ class BfxWebSocketBucket(Connection):
                         self.__on_subscribed(message)
 
                 if isinstance(message, list):
-                    if (
-                        (chan_id := cast(int, message[0]))
-                        and (subscription := self.__subscriptions.get(chan_id))
+                    if (chan_id := cast(int, message[0])) and (
+                        subscription := self.__subscriptions.get(chan_id)
                     ):
                         if message[1] == Connection._HEARTBEAT:
                             self.__event_emitter.emit("heartbeat", subscription)
