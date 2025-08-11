@@ -10,7 +10,6 @@ import requests
 from bfxapi._utils.json_decoder import JSONDecoder
 from bfxapi._utils.json_encoder import JSONEncoder
 from bfxapi._utils.post_only_enforcement import enforce_post_only
-from bfxapi.constants.order_flags import POST_ONLY
 from bfxapi.exceptions import InvalidCredentialError
 from bfxapi.rest.exceptions import GenericError, RequestParameterError
 
@@ -78,7 +77,7 @@ class Middleware:
             elif "funding/offer/submit" in endpoint:
                 # Force POST_ONLY flag on all funding offer submissions
                 body["flags"] = enforce_post_only(body.get("flags"))
-        
+
         _body = body and json.dumps(body, cls=JSONEncoder) or None
 
         headers = {"Accept": "application/json", "Content-Type": "application/json"}
