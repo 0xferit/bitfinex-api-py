@@ -64,7 +64,7 @@ class TestRESTEndpointsPostOnly(unittest.TestCase):
         
         # Verify the post method was called with enforced flags
         call_args = self.mock_interface.post.call_args
-        body = call_args[0][1]  # Second positional argument is the body
+        body = call_args.kwargs["body"]  # Body is passed as keyword argument
         self.assertIn("flags", body)
     
     @patch('bfxapi.rest._interfaces.rest_auth_endpoints.enforce_post_only')
@@ -87,7 +87,7 @@ class TestRESTEndpointsPostOnly(unittest.TestCase):
         
         # Verify flags field is not in the body when not provided
         call_args = self.mock_interface.post.call_args
-        body = call_args[0][1]
+        body = call_args.kwargs["body"]
         self.assertNotIn("flags", body)
     
     @patch('bfxapi.rest._interfaces.rest_auth_endpoints.enforce_post_only')
@@ -110,7 +110,7 @@ class TestRESTEndpointsPostOnly(unittest.TestCase):
         
         # Verify the post method was called with enforced flags
         call_args = self.mock_interface.post.call_args
-        body = call_args[0][1]
+        body = call_args.kwargs["body"]
         self.assertIn("flags", body)
 
 
