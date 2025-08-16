@@ -1,0 +1,15 @@
+bitfinex-api-py-postonly
+Copyright 2025 Ferit
+
+This is a modified fork of bitfinex-api-py
+Original Copyright: Bitfinex
+Original Repository: https://github.com/bitfinexcom/bitfinex-api-py
+Original License: Apache License 2.0
+
+SAFETY MODIFICATIONS:
+- ALL orders are automatically forced to be POST_ONLY (maker-only)
+- WebSocket heartbeat events are exposed for connection monitoring
+
+CRITICAL: This fork enforces POST_ONLY flag (4096) on ALL orders.
+Orders will never cross the spread and will always be maker orders.
+This cannot be disabled without modifying the source code.

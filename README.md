@@ -1,14 +1,26 @@
-# bitfinex-api-py
+# bitfinex-api-py-postonly
 
-[![PyPI - Python Version](https://img.shields.io/pypi/pyversions/bitfinex-api-py)](https://pypi.org/project/bitfinex-api-py/)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-![GitHub Action](https://github.com/bitfinexcom/bitfinex-api-py/actions/workflows/build.yml/badge.svg)
+[![Safety Fork](https://img.shields.io/badge/Fork-Safety%20Enhanced-green)](https://github.com/0xferit/bitfinex-api-py)
+[![POST_ONLY Enforced](https://img.shields.io/badge/Orders-POST__ONLY%20Enforced-blue)](https://github.com/0xferit/bitfinex-api-py)
+[![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org)
 
-Official implementation of the [Bitfinex APIs (V2)](https://docs.bitfinex.com/docs) for `Python 3.8+`.
+**A safety-enhanced fork of the official Bitfinex Python API that prevents accidental market/taker orders.**
 
-## ⚠️ POST-ONLY ENFORCEMENT - DELETION-BASED
+🛡️ **All orders are automatically POST_ONLY (maker-only) - Cannot be disabled**
 
-**CRITICAL:** This fork has been modified to ONLY submit post-only orders.
+## Why This Fork Exists
+
+If you've ever:
+- ❌ Lost money to accidental market orders during volatility
+- ❌ Had orders cross the spread unexpectedly  
+- ❌ Paid taker fees when you meant to earn maker rebates
+- ❌ Made costly mistakes from typos or bugs causing immediate execution
+
+**This fork solves these problems by enforcing POST_ONLY at the library level.**
+
+## ⚠️ CRITICAL: POST-ONLY ENFORCEMENT
+
+**This fork has been modified to ONLY submit post-only orders. No exceptions.**
 
 ### What Was Changed
 
@@ -58,6 +70,50 @@ Unlike other implementations, this fork has:
 - **No way to submit non-post-only orders**
 
 The code to create non-post-only orders has been DELETED.
+
+## Installation
+
+### From PyPI (Coming Soon)
+```bash
+pip install bitfinex-api-py-postonly
+```
+
+### From GitHub
+```bash
+pip install git+https://github.com/0xferit/bitfinex-api-py.git
+```
+
+### From Local Package
+```bash
+# Download the wheel file from releases
+pip install bitfinex_api_py_postonly-3.0.5.post1-py3-none-any.whl
+```
+
+## Quick Start
+
+```python
+from bfxapi import Client
+
+# Same API as original - but ALL orders are POST_ONLY
+client = Client(api_key="YOUR_KEY", api_secret="YOUR_SECRET")
+
+# This will ALWAYS be post-only (maker-only)
+order = client.rest.auth.submit_order(
+    type="EXCHANGE LIMIT",
+    symbol="tBTCUSD", 
+    amount=0.01,
+    price=50000
+    # No need to specify flags - POST_ONLY is forced!
+)
+```
+
+## Perfect For
+
+- 🤖 **Market Making Bots** - Ensure you never take liquidity
+- 📊 **Grid Trading Systems** - All orders stay on the book
+- 💰 **DCA Strategies** - Limit orders only, no market buys
+- 🔄 **Arbitrage Systems** - Control execution precisely
+- 🛡️ **Safety-Critical Trading** - When mistakes are costly
 
 ### Features
 

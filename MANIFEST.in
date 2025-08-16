@@ -1,0 +1,35 @@
+# Include important files
+include README.md
+include LICENSE
+include NOTICE
+
+# Include all Python source files
+recursive-include bfxapi *.py
+
+# EXCLUDE non-production files
+exclude CLAUDE.md
+exclude .gitignore
+exclude .env
+exclude *.pyc
+exclude setup.cfg
+exclude pyproject.toml
+
+# EXCLUDE directories that should NOT be in package
+prune tests
+prune examples
+prune .github
+prune .git
+prune .venv
+prune venv
+prune __pycache__
+prune .pytest_cache
+prune *.egg-info
+prune build
+prune dist
+prune .cursor
+prune plans
+
+# Exclude any compiled Python files
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude __pycache__
