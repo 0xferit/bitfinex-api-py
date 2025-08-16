@@ -174,6 +174,43 @@ def enforce_post_only(flags: Optional[int], order_type: Optional[str] = None) ->
 
 **Difference: $7,500/month saved**
 
+## Comparison With Original
+
+| Feature | Original `bitfinex-api-py` | This Fork |
+|---------|---------------------------|-----------|
+| **POST_ONLY default** | ❌ No | ✅ Yes (forced) |
+| **Can place market orders** | ✅ Yes | ❌ No (rejected) |
+| **Can cross spread** | ✅ Yes | ❌ No |
+| **Taker orders possible** | ✅ Yes | ❌ No |
+| **Requires flag management** | ✅ Yes | ❌ No (automatic) |
+| **Risk of accidental market orders** | ⚠️ High | ✅ Zero |
+| **API compatibility** | - | 💯 100% |
+| **Heartbeat events** | ❌ No | ✅ Yes |
+
+### Original API (Manual Safety)
+```python
+# Must remember POST_ONLY flag (4096)
+order = client.rest.auth.submit_order(
+    type="EXCHANGE LIMIT",
+    symbol="tBTCUSD", 
+    amount=0.01,
+    price=50000,
+    flags=4096  # ⚠️ Easy to forget!
+)
+```
+
+### This Fork (Automatic Safety)
+```python
+# POST_ONLY always enforced
+order = client.rest.auth.submit_order(
+    type="EXCHANGE LIMIT",
+    symbol="tBTCUSD",
+    amount=0.01,
+    price=50000
+    # ✅ POST_ONLY added automatically
+)
+```
+
 ## Migration From Original
 
 No code changes needed - it's a drop-in replacement:
@@ -204,6 +241,17 @@ Your existing code continues to work, just safer.
 ## License
 
 Apache 2.0 - Same as original
+
+## Problems This Package Solves
+
+- **Accidental Market Orders**: Makes market orders impossible (raises ValueError)
+- **Crossing the Spread**: POST_ONLY flag prevents immediate taker execution
+- **Taker Fees**: All orders are maker-only, eligible for rebates instead of fees
+- **Fat Finger Mistakes**: Orders always go to order book first, won't execute at wrong price
+
+## Discovery Keywords
+
+If you're searching for: bitfinex python force post only, bitfinex api maker only orders, prevent market orders bitfinex python, bitfinex POST_ONLY flag python, bitfinex no taker fees python, bitfinex api safety wrapper, avoid taker fees bitfinex, bitfinex python api accidental market order, ensure maker orders bitfinex, bitfinex grid bot post only, bitfinex market maker python, bitfinex order won't cross spread
 
 ## Changes Summary
 
