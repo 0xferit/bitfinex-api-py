@@ -183,7 +183,7 @@ def enforce_post_only(flags: Optional[int], order_type: Optional[str] = None) ->
 | **Can cross spread** | ✅ Yes | ❌ No |
 | **Taker orders possible** | ✅ Yes | ❌ No |
 | **Risk of accidental market orders** | ⚠️ High | ✅ Zero |
-| **API compatibility** | - | 💯 100% |
+| **Drop-in replacement** | - | ✅ Yes |
 | **Heartbeat events** | ❌ No | ✅ Yes |
 
 ### Original API (Manual Safety)
