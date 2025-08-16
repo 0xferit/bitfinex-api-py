@@ -2,7 +2,7 @@ from setuptools import setup
 
 setup(
     name="bitfinex-api-py-postonly",
-    version="3.0.5.post1",
+    version="3.0.5.post2",
     description="Bitfinex Python API with enforced POST_ONLY orders - prevents accidental market/taker orders",
     long_description=(
         "A safety-enhanced fork of the official Bitfinex Python API that "
