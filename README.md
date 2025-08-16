@@ -182,7 +182,6 @@ def enforce_post_only(flags: Optional[int], order_type: Optional[str] = None) ->
 | **Can place market orders** | ✅ Yes | ❌ No (rejected) |
 | **Can cross spread** | ✅ Yes | ❌ No |
 | **Taker orders possible** | ✅ Yes | ❌ No |
-| **Requires flag management** | ✅ Yes | ❌ No (automatic) |
 | **Risk of accidental market orders** | ⚠️ High | ✅ Zero |
 | **API compatibility** | - | 💯 100% |
 | **Heartbeat events** | ❌ No | ✅ Yes |
