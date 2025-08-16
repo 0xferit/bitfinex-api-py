@@ -102,8 +102,8 @@ class RestAuthEndpoints(Interface):
         meta: Optional[Dict[str, Any]] = None,
     ) -> Notification[Order]:
         """Submit a new order (ALWAYS post-only)."""
-        # FORCE POST_ONLY flag - no exceptions
-        flags = enforce_post_only(flags)
+        # FORCE POST_ONLY flag - no exceptions (validates order type compatibility)
+        flags = enforce_post_only(flags, order_type=type)
 
         body = {
             "type": type,

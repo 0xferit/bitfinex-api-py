@@ -63,12 +63,17 @@ class Middleware:
         params: Optional["_Params"] = None,
     ) -> Any:
         # FORCE POST_ONLY for order endpoints (catch-all protection)
+        # MAINTENANCE NOTE: If Bitfinex adds new order endpoints with different
+        # naming patterns (not containing "order/submit" or "order/update"),
+        # this middleware check must be updated to include them.
+        # Current patterns as of 2025: auth/w/order/submit, auth/w/order/update
         if body and isinstance(body, dict):
             if "order/submit" in endpoint:
-                # Force POST_ONLY flag on all order submissions
-                body["flags"] = enforce_post_only(body.get("flags"))
+                # Force POST_ONLY flag on all order submissions (validates order type)
+                body["flags"] = enforce_post_only(body.get("flags"), order_type=body.get("type"))
             elif "order/update" in endpoint:
                 # FORCE POST_ONLY flag on ALL order updates - no exceptions
+                # Note: Updates don't change order type, so no validation needed
                 body["flags"] = enforce_post_only(body.get("flags"))
 
         _body = body and json.dumps(body, cls=JSONEncoder) or None

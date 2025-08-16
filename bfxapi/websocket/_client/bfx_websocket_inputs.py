@@ -28,8 +28,8 @@ class BfxWebSocketInputs:
         meta: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Submit a new order (ALWAYS post-only)."""
-        # FORCE POST_ONLY flag - no exceptions
-        flags = enforce_post_only(flags)
+        # FORCE POST_ONLY flag - no exceptions (validates order type compatibility)
+        flags = enforce_post_only(flags, order_type=type)
 
         await self.__handle_websocket_input(
             "on",

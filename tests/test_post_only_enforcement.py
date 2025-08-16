@@ -57,6 +57,35 @@ class TestPostOnlyUtility(unittest.TestCase):
         self.assertTrue(result & POST_ONLY)
         self.assertEqual(result, ALL_COMMON_FLAGS)  # POST_ONLY already included
 
+    def test_market_order_rejected(self):
+        """Test that MARKET orders are rejected with clear error message."""
+        # Test basic MARKET order
+        with self.assertRaises(ValueError) as cm:
+            enforce_post_only(0, order_type="MARKET")
+        
+        error_msg = str(cm.exception)
+        self.assertIn("incompatible with POST_ONLY", error_msg)
+        self.assertIn("LIMIT order", error_msg)
+        
+        # Test various market order formats
+        market_types = ["MARKET", "EXCHANGE MARKET", "FOK MARKET", "IOC MARKET", "market", "Market"]
+        for order_type in market_types:
+            with self.assertRaises(ValueError) as cm:
+                enforce_post_only(0, order_type=order_type)
+            self.assertIn("incompatible", str(cm.exception))
+    
+    def test_limit_orders_accepted(self):
+        """Test that LIMIT orders are accepted."""
+        limit_types = ["LIMIT", "EXCHANGE LIMIT", "FOK LIMIT", "IOC LIMIT", "limit", "Limit"]
+        for order_type in limit_types:
+            # Should not raise any exception
+            result = enforce_post_only(0, order_type=order_type)
+            self.assertEqual(result, POST_ONLY)
+            
+            # Also test with existing flags
+            result = enforce_post_only(64, order_type=order_type)
+            self.assertEqual(result, POST_ONLY | 64)
+
 
 class TestIntegrationScenarios(unittest.TestCase):
     """Test complex integration scenarios with real flag operations."""
@@ -138,6 +167,46 @@ class TestIntegrationPostOnly(unittest.IsolatedAsyncioTestCase):
             
             actual_body = json.loads(mock_post.call_args[1]['data'])
             self.assertEqual(actual_body['flags'], 4096)
+    
+    async def test_websocket_update_order_integration(self):
+        """Test that WebSocket update_order enforces POST_ONLY flag."""
+        from unittest.mock import AsyncMock, MagicMock, patch
+        from bfxapi.websocket._client.bfx_websocket_inputs import BfxWebSocketInputs
+        
+        # Mock the WebSocket client
+        mock_client = MagicMock()
+        mock_client._BfxWebSocketClient__bucket = MagicMock()
+        mock_client._BfxWebSocketClient__bucket.put = AsyncMock()
+        
+        inputs = BfxWebSocketInputs(mock_client)
+        
+        # Patch the private method to be async
+        with patch.object(inputs, '_BfxWebSocketInputs__handle_websocket_input', new_callable=AsyncMock) as mock_handle:
+            # Test update_order without flags
+            await inputs.update_order(
+                id=123456,
+                price=51000,
+                flags=None
+            )
+            
+            # Verify POST_ONLY was added
+            mock_handle.assert_called_once()
+            call_args = mock_handle.call_args
+            self.assertEqual(call_args[0][0], "ou")  # update order command
+            payload = call_args[0][1]
+            self.assertEqual(payload["flags"], 4096)  # POST_ONLY enforced
+            
+            # Reset and test with existing flags
+            mock_handle.reset_mock()
+            await inputs.update_order(
+                id=123456,
+                price=52000,
+                flags=64  # HIDDEN
+            )
+            
+            call_args = mock_handle.call_args
+            payload = call_args[0][1]
+            self.assertEqual(payload["flags"], 4096 | 64)  # Both flags preserved
             
     async def test_websocket_submit_order_integration(self):
         """Test that WebSocket submit_order adds POST_ONLY through the call path."""

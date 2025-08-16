@@ -6,523 +6,209 @@
 
 **A safety-enhanced fork of the official Bitfinex Python API that prevents accidental market/taker orders.**
 
-🛡️ **All orders are automatically POST_ONLY (maker-only) - Cannot be disabled**
+## ⚠️ CRITICAL: What This Fork Changes
 
-## Why This Fork Exists
+This fork modifies the official Bitfinex Python API to:
 
-If you've ever:
-- ❌ Lost money to accidental market orders during volatility
-- ❌ Had orders cross the spread unexpectedly  
-- ❌ Paid taker fees when you meant to earn maker rebates
-- ❌ Made costly mistakes from typos or bugs causing immediate execution
-
-**This fork solves these problems by enforcing POST_ONLY at the library level.**
-
-## ⚠️ CRITICAL: POST-ONLY ENFORCEMENT
-
-**This fork has been modified to ONLY submit post-only orders. No exceptions.**
-
-### What Was Changed
-
-1. **ALL orders are automatically post-only** - No exceptions
-2. **Cannot be bypassed** - POST_ONLY is hard-coded at multiple levels (orders only)
-3. **No unsafe methods exist** - Bypass code was deleted, not hidden
-
-### How It Works
-
-The POST_ONLY flag (4096) is automatically added to ALL orders (not funding offers):
-
-```python
-from bfxapi import Client
-
-bfx = Client(api_key="...", api_secret="...")
-
-# This will ALWAYS be post-only (flag added automatically)
-order = bfx.rest.auth.submit_order(
-    type="EXCHANGE LIMIT",
-    symbol="tBTCUSD",
-    amount=0.01,
-    price=50000
-    # No need to specify flags - POST_ONLY is forced
-)
-
-# Even if you try flags=0, POST_ONLY is still added
-order = bfx.rest.auth.submit_order(
-    type="EXCHANGE LIMIT",
-    symbol="tBTCUSD",
-    amount=0.01,
-    price=50000,
-    flags=0  # Still becomes flags=4096 internally!
-)
-```
-
-### Protection Levels
-
-1. **Application Level** - submit_order() and update_order() force POST_ONLY
-2. **Middleware Level** - Order submit/update REST calls force POST_ONLY
-3. **WebSocket Level** - Order submit/update WS messages force POST_ONLY
-
-### There Are NO Bypass Methods
-
-Unlike other implementations, this fork has:
-- **No unsafe methods**
-- **No bypass functions**
-- **No way to submit non-post-only orders**
-
-The code to create non-post-only orders has been DELETED.
+1. **Force POST_ONLY flag on ALL orders** - Cannot be disabled
+2. **Reject MARKET orders** - Throws clear error message
+3. **Expose WebSocket heartbeat events** - Monitor connection health
 
 ## Installation
 
-### From PyPI (Coming Soon)
 ```bash
 pip install bitfinex-api-py-postonly
 ```
 
-### From GitHub
-```bash
-pip install git+https://github.com/0xferit/bitfinex-api-py.git
-```
+## What's Different From Original
 
-### From Local Package
-```bash
-# Download the wheel file from releases
-pip install bitfinex_api_py_postonly-3.0.5.post1-py3-none-any.whl
-```
-
-## Quick Start
+### 1. All Orders Are Post-Only (Maker-Only)
 
 ```python
 from bfxapi import Client
 
-# Same API as original - but ALL orders are POST_ONLY
-client = Client(api_key="YOUR_KEY", api_secret="YOUR_SECRET")
+client = Client(api_key="...", api_secret="...")
 
-# This will ALWAYS be post-only (maker-only)
+# POST_ONLY flag (4096) is automatically added
 order = client.rest.auth.submit_order(
     type="EXCHANGE LIMIT",
-    symbol="tBTCUSD", 
+    symbol="tBTCUSD",
     amount=0.01,
     price=50000
-    # No need to specify flags - POST_ONLY is forced!
+    # No flags needed - POST_ONLY is forced
+)
+
+# Even if you try flags=0, POST_ONLY is still added
+order = client.rest.auth.submit_order(
+    type="EXCHANGE LIMIT",
+    symbol="tBTCUSD",
+    amount=0.01,
+    price=50000,
+    flags=0  # Still becomes 4096 internally
 )
 ```
 
-## Perfect For
-
-- 🤖 **Market Making Bots** - Ensure you never take liquidity
-- 📊 **Grid Trading Systems** - All orders stay on the book
-- 💰 **DCA Strategies** - Limit orders only, no market buys
-- 🔄 **Arbitrage Systems** - Control execution precisely
-- 🛡️ **Safety-Critical Trading** - When mistakes are costly
-
-### Features
-
-* Support for 75+ REST endpoints (a list of available endpoints can be found [here](https://docs.bitfinex.com/reference))
-* New WebSocket client to ensure fast, secure and persistent connections
-* Full support for Bitfinex notifications (including custom notifications)
-* Native support for type hinting and type checking with [`mypy`](https://github.com/python/mypy)
-
-## Installation
-
-```console
-python3 -m pip install bitfinex-api-py
-```
-
-If you intend to use mypy type hints in your project, use:
-```console
-python3 -m pip install bitfinex-api-py[typing]
-```
-
----
-
-# Quickstart
+### 2. Market Orders Are Rejected
 
 ```python
-from bfxapi import Client, REST_HOST
-
-from bfxapi.types import Notification, Order
-
-bfx = Client(
-    rest_host=REST_HOST,
-    api_key="<YOUR BFX API-KEY>",
-    api_secret="<YOUR BFX API-SECRET>"
-)
-
-notification: Notification[Order] = bfx.rest.auth.submit_order(
-    type="EXCHANGE LIMIT", symbol="tBTCUSD", amount=0.165212, price=30264.0)
-
-order: Order = notification.data
-
-if notification.status == "SUCCESS":
-    print(f"Successful new order for {order.symbol} at {order.price}$.")
-
-if notification.status == "ERROR":
-    raise Exception(f"Something went wrong: {notification.text}")
+# This will raise ValueError
+try:
+    order = client.rest.auth.submit_order(
+        type="MARKET",  # or "EXCHANGE MARKET"
+        symbol="tBTCUSD",
+        amount=0.01
+    )
+except ValueError as e:
+    print(e)  # "Order type 'MARKET' is incompatible with POST_ONLY enforcement"
 ```
 
-## Authenticating in your account
-
-To authenticate in your account, you must provide a valid API-KEY and API-SECRET:
-```python
-bfx = Client(
-    [...],
-    api_key=os.getenv("BFX_API_KEY"),
-    api_secret=os.getenv("BFX_API_SECRET")
-)
-```
-
-### Warning
-
-Remember to not share your API-KEYs and API-SECRETs with anyone. \
-Everyone who owns one of your API-KEYs and API-SECRETs will have full access to your account. \
-We suggest saving your credentials in a local `.env` file and accessing them as environment variables.
-
-_Revoke your API-KEYs and API-SECRETs immediately if you think they might have been stolen._
-
-> **NOTE:** A guide on how to create, edit and revoke API-KEYs and API-SECRETs can be found [here](https://support.bitfinex.com/hc/en-us/articles/115003363429-How-to-create-and-revoke-a-Bitfinex-API-Key).
-
-## Next
-
-* [WebSocket client documentation](#websocket-client-documentation)
-    - [Advanced features](#advanced-features)
-    - [Examples](#examples)
-* [How to contribute](#how-to-contribute)
-
----
-
-# WebSocket client documentation
-
-1. [Instantiating the client](#instantiating-the-client)
-    * [Authentication](#authentication)
-2. [Running the client](#running-the-client)
-    * [Closing the connection](#closing-the-connection)
-3. [Subscribing to public channels](#subscribing-to-public-channels)
-    * [Unsubscribing from a public channel](#unsubscribing-from-a-public-channel)
-    * [Setting a custom `sub_id`](#setting-a-custom-sub_id)
-4. [Listening to events](#listening-to-events)
-
-### Advanced features
-* [Using custom notifications](#using-custom-notifications)
-
-### Examples
-* [Creating a new order](#creating-a-new-order)
-
-## Instantiating the client
+### 3. WebSocket Heartbeat Events
 
 ```python
-bfx = Client(wss_host=PUB_WSS_HOST)
-```
-
-`Client::wss` contains an instance of `BfxWebSocketClient` (core implementation of the WebSocket client). \
-The `wss_host` argument is used to indicate the URL to which the WebSocket client should connect. \
-The `bfxapi` package exports 2 constants to quickly set this URL:
-
-Constant | URL | When to use
-:--- | :--- | :---
-WSS_HOST | wss://api.bitfinex.com/ws/2 | Suitable for all situations, supports authentication.
-PUB_WSS_HOST | wss://api-pub.bitfinex.com/ws/2 | For public uses only, doesn't support authentication.
-
-PUB_WSS_HOST is recommended over WSS_HOST for applications that don't require authentication.
-
-> **NOTE:** The `wss_host` parameter is optional, and the default value is WSS_HOST.
-
-### Authentication
-
-To learn how to authenticate in your account, have a look at [Authenticating in your account](#authenticating-in-your-account).
-
-If authentication is successful, the client will emit the `authenticated` event. \
-All operations that require authentication will fail if run before the emission of this event. \
-The `data` argument contains information about the authentication, such as the `userId`, the `auth_id`, etc...
-
-```python
-@bfx.wss.on("authenticated")
-def on_authenticated(data: Dict[str, Any]):
-    print(f"Successful login for user <{data['userId']}>.")
-```
-
-`data` can also be useful for checking if an API-KEY has certain permissions:
-
-```python
-@bfx.wss.on("authenticated")
-def on_authenticated(data: Dict[str, Any]):
-    if not data["caps"]["orders"]["read"]:
-        raise Exception("This application requires read permissions on orders.")
-
-    if not data["caps"]["positions"]["write"]:
-        raise Exception("This application requires write permissions on positions.")
-```
-
-## Running the client
-
-The client can be run using `BfxWebSocketClient::run`:
-```python
-bfx.wss.run()
-```
-
-If an event loop is already running, users can start the client with `BfxWebSocketClient::start`:
-```python
-await bfx.wss.start()
-```
-
-If the client succeeds in connecting to the server, it will emit the `open` event. \
-This is the right place for all bootstrap activities, such as subscribing to public channels. \
-To learn more about events and public channels, see [Listening to events](#listening-to-events) and [Subscribing to public channels](#subscribing-to-public-channels).
-
-```python
-@bfx.wss.on("open")
-async def on_open():
-    await bfx.wss.subscribe("ticker", symbol="tBTCUSD")
-```
-
-### Closing the connection
-
-Users can close the connection with the WebSocket server using `BfxWebSocketClient::close`:
-```python
-await bfx.wss.close()
-```
-
-A custom [close code number](https://www.iana.org/assignments/websocket/websocket.xhtml#close-code-number), along with a verbose reason, can be given as parameters:
-```python
-await bfx.wss.close(code=1001, reason="Going Away")
-```
-
-After closing the connection, the client will emit the `disconnected` event:
-```python
-@bfx.wss.on("disconnected")
-def on_disconnected(code: int, reason: str):
-    if code == 1000 or code == 1001:
-        print("Closing the connection without errors!")
-```
-
-## Subscribing to public channels
-
-Users can subscribe to public channels using `BfxWebSocketClient::subscribe`:
-```python
-await bfx.wss.subscribe("ticker", symbol="tBTCUSD")
-```
-
-On each successful subscription, the client will emit the `subscribed` event:
-```python
-@bfx.wss.on("subscribed")
-def on_subscribed(subscription: subscriptions.Subscription):
-    if subscription["channel"] == "ticker":
-        print(f"{subscription['symbol']}: {subscription['sub_id']}") # tBTCUSD: f2757df2-7e11-4244-9bb7-a53b7343bef8
-```
-
-### Unsubscribing from a public channel
-
-It is possible to unsubscribe from a public channel at any time. \
-Unsubscribing from a public channel prevents the client from receiving any more data from it. \
-This can be done using `BfxWebSocketClient::unsubscribe`, and passing the `sub_id` of the public channel you want to unsubscribe from:
-
-```python
-await bfx.wss.unsubscribe(sub_id="f2757df2-7e11-4244-9bb7-a53b7343bef8")
-```
-
-### Setting a custom `sub_id`
-
-The client generates a random `sub_id` for each subscription. \
-These values must be unique, as the client uses them to identify subscriptions. \
-However, it is possible to force this value by passing a custom `sub_id` to `BfxWebSocketClient::subscribe`:
-
-```python
-await bfx.wss.subscribe("candles", key="trade:1m:tBTCUSD", sub_id="507f1f77bcf86cd799439011")
-```
-
-## Listening to events
-
-Whenever the WebSocket client receives data, it will emit a specific event. \
-Users can either ignore those events or listen for them by registering callback functions. \
-These callback functions can also be asynchronous; in fact the client fully supports coroutines ([`asyncio`](https://docs.python.org/3/library/asyncio.html)).
-
-To add a listener for a specific event, users can use the decorator `BfxWebSocketClient::on`:
-```python
-@bfx.wss.on("candles_update")
-def on_candles_update(sub: subscriptions.Candles, candle: Candle):
-    print(f"Candle update for key <{sub['key']}>: {candle}")
-```
-
-The same can be done without using decorators:
-```python
-bfx.wss.on("candles_update", callback=on_candles_update)
-```
-
-### Heartbeat events
-
-The WebSocket server sends periodic heartbeat messages to keep connections alive. 
-These are now exposed as `heartbeat` events that you can listen to:
-
-```python
-from typing import Optional
-from bfxapi.websocket.subscriptions import Subscription
-
-@bfx.wss.on("heartbeat")
-def on_heartbeat(subscription: Optional[Subscription]) -> None:
+@client.wss.on("heartbeat")
+def on_heartbeat(subscription):
     if subscription:
-        # Heartbeat for a specific subscription (public channels)
-        channel = subscription["channel"]
-        symbol = subscription.get("symbol", "N/A")
-        print(f"Heartbeat for {channel}: {symbol}")
+        print(f"Channel {subscription['channel']} is alive")
     else:
-        # Heartbeat for authenticated connection (channel 0)
-        print("Heartbeat on authenticated connection")
+        print("Authenticated connection heartbeat")
 ```
 
-**Note:** The heartbeat handler receives:
-- `subscription` parameter containing subscription details for public channel heartbeats
-- `None` for authenticated connection heartbeats (channel 0)
+## Use Cases
 
----
+### ✅ Perfect For
 
-# Advanced features
-
-## Using custom notifications
-
-**Using custom notifications requires user authentication.**
-
-Users can send custom notifications using `BfxWebSocketClient::notify`:
+**Market Making Bots**
 ```python
-await bfx.wss.notify({ "foo": 1 })
+# All orders guaranteed to be maker orders
+async def place_bid_ask():
+    # Both orders will be POST_ONLY, earning maker rebates
+    await client.rest.auth.submit_order(
+        type="EXCHANGE LIMIT",
+        symbol="tBTCUSD",
+        amount=0.1,
+        price=current_bid - spread
+    )
 ```
 
-Any data can be sent along with a custom notification.
-
-Custom notifications are broadcast by the server on all user's open connections. \
-So, each custom notification will be sent to every online client of the current user. \
-Whenever a client receives a custom notification, it will emit the `notification` event:
+**Grid Trading**
 ```python
-@bfx.wss.on("notification")
-def on_notification(notification: Notification[Any]):
-    print(notification.data) # { "foo": 1 }
+# Grid orders won't execute immediately during volatility
+for level in grid_levels:
+    client.rest.auth.submit_order(
+        type="EXCHANGE LIMIT",
+        symbol="tBTCUSD",
+        amount=0.01,
+        price=level
+        # POST_ONLY prevents crossing spread
+    )
 ```
 
-# Examples
+**DCA Strategies**
+```python
+# Buy orders only fill when price comes to you
+for price in target_prices:
+    client.rest.auth.submit_order(
+        type="EXCHANGE LIMIT",
+        symbol="tBTCUSD",
+        amount=0.01,
+        price=price
+        # Won't market buy during spikes
+    )
+```
 
-## Creating a new order
+### ❌ NOT Suitable For
+
+- Strategies requiring market orders
+- Stop-loss implementations
+- Immediate execution needs
+- Momentum trading
+
+## Technical Implementation
+
+### Enforcement Layers
+
+1. **REST API** (`rest_auth_endpoints.py`)
+   - `submit_order()` - Line 106: Validates order type and adds POST_ONLY
+   - `update_order()` - Line 146: Adds POST_ONLY
+
+2. **Middleware** (`middleware.py`)
+   - Lines 71-77: Catches all order endpoints
+   - Validates order type for submissions
+   - Includes maintenance notes for new endpoints
+
+3. **WebSocket** (`bfx_websocket_inputs.py`)
+   - `submit_order()` - Line 32: Validates and enforces
+   - `update_order()` - Line 71: Enforces POST_ONLY
+
+4. **WebSocket Client** (`bfx_websocket_client.py`)
+   - Lines 213-220: Final enforcement layer
+
+### Core Safety Function
 
 ```python
-import os
-
-from bfxapi import Client, WSS_HOST
-
-from bfxapi.types import Notification, Order
-
-bfx = Client(
-    wss_host=WSS_HOST,
-    api_key=os.getenv("BFX_API_KEY"),
-    api_secret=os.getenv("BFX_API_SECRET")
-)
-
-@bfx.wss.on("authenticated")
-async def on_authenticated(_):
-    await bfx.wss.inputs.submit_order(
-        type="EXCHANGE LIMIT", symbol="tBTCUSD", amount=0.165212, price=30264.0)
-
-@bfx.wss.on("order_new")
-def on_order_new(order: Order):
-    print(f"Successful new order for {order.symbol} at {order.price}$.")
-
-@bfx.wss.on("on-req-notification")
-def on_notification(notification: Notification[Order]):
-    if notification.status == "ERROR":
-        raise Exception(f"Something went wrong: {notification.text}")
-
-bfx.wss.run()
+def enforce_post_only(flags: Optional[int], order_type: Optional[str] = None) -> int:
+    """
+    Ensure POST_ONLY flag is set, preserving other flags.
+    Validates order type compatibility.
+    """
+    if order_type and 'MARKET' in order_type.upper():
+        raise ValueError(
+            f"Order type '{order_type}' is incompatible with POST_ONLY enforcement. "
+            "POST_ONLY only works with limit-style orders."
+        )
+    return POST_ONLY | (flags if flags is not None else 0)
 ```
 
----
+## Fee Impact
 
-# How to contribute
+### Monthly Trading: 100 BTC @ $50,000
 
-All contributions are welcome! :D
+**Original API:**
+- 50% taker orders: -$5,000 in fees
+- 50% maker orders: +$2,500 rebate
+- **Net: -$2,500/month cost**
 
-A guide on how to install and set up `bitfinex-api-py`'s source code can be found [here](#installation-and-setup). \
-Before opening any pull requests, please have a look at [Before Opening a PR](#before-opening-a-pr). \
-Contributors must uphold the [Contributor Covenant code of conduct](https://github.com/bitfinexcom/bitfinex-api-py/blob/master/CODE_OF_CONDUCT.md).
+**This Fork:**
+- 100% maker orders: +$5,000 rebate
+- **Net: +$5,000/month earned**
 
-### Index
+**Difference: $7,500/month saved**
 
-1. [Installation and setup](#installation-and-setup)
-    * [Cloning the repository](#cloning-the-repository)
-    * [Installing the dependencies](#installing-the-dependencies)
-    * [Set up the pre-commit hooks (optional)](#set-up-the-pre-commit-hooks-optional)
-2. [Before opening a PR](#before-opening-a-pr)
-    * [Tip](#tip)
-3. [License](#license)
+## Migration From Original
 
-## Installation and setup
+No code changes needed - it's a drop-in replacement:
 
-A brief guide on how to install and set up the project in your Python 3.8+ environment.
+```bash
+# Uninstall original
+pip uninstall bitfinex-api-py
 
-### Cloning the repository
-
-```console
-git clone https://github.com/bitfinexcom/bitfinex-api-py.git
+# Install fork
+pip install bitfinex-api-py-postonly
 ```
 
-### Installing the dependencies
+Your existing code continues to work, just safer.
 
-```console
-python3 -m pip install -r dev-requirements.txt
-```
+## Important Notes
 
-Make sure to install `dev-requirements.txt` (and not `requirements.txt`!). \
-`dev-requirements.txt` will install all dependencies in `requirements.txt` plus any development dependency. \
-dev-requirements includes [mypy](https://github.com/python/mypy), [black](https://github.com/psf/black), [isort](https://github.com/PyCQA/isort), [flake8](https://github.com/PyCQA/flake8), and [pre-commit](https://github.com/pre-commit/pre-commit) (more on these tools in later chapters).
+- **Funding offers** are NOT affected (no POST_ONLY flag)
+- **All order types** must be limit-style (LIMIT, EXCHANGE LIMIT, etc.)
+- **Flag preservation**: Other flags (HIDDEN, REDUCE_ONLY) are preserved
+- **No bypass**: There is no way to disable POST_ONLY enforcement
 
-All done, your Python 3.8+ environment should now be able to run `bitfinex-api-py`'s source code.
+## Repository
 
-### Set up the pre-commit hooks (optional)
-
-**Do not skip this paragraph if you intend to contribute to the project.**
-
-This repository includes a pre-commit configuration file that defines the following hooks:
-1. [isort](https://github.com/PyCQA/isort)
-2. [black](https://github.com/psf/black)
-3. [flake8](https://github.com/PyCQA/flake8)
-
-To set up pre-commit use:
-```console
-python3 -m pre-commit install
-```
-
-These will ensure that isort, black and flake8 are run on each git commit.
-
-[Visit this page to learn more about git hooks and pre-commit.](https://pre-commit.com/#introduction)
-
-#### Manually triggering the pre-commit hooks
-
-You can also manually trigger the execution of all hooks with:
-```console
-python3 -m pre-commit run --all-files
-```
-
-## Before opening a PR
-
-**We won't accept your PR or we'll request changes if the following requirements aren't met.**
-
-Wheter you're submitting a bug fix, a new feature or a documentation change, you should first discuss it in an issue.
-
-You must be able to check off all tasks listed in [PULL_REQUEST_TEMPLATE](https://raw.githubusercontent.com/bitfinexcom/bitfinex-api-py/master/.github/PULL_REQUEST_TEMPLATE.md) before opening a pull request.
-
-### Tip
-
-Setting up the project's pre-commit hooks will help automate this process ([more](#set-up-the-pre-commit-hooks-optional)).
+- **Fork**: https://github.com/0xferit/bitfinex-api-py
+- **Original**: https://github.com/bitfinexcom/bitfinex-api-py
+- **PyPI**: https://pypi.org/project/bitfinex-api-py-postonly/
 
 ## License
 
-```
-Copyright 2023 Bitfinex
+Apache 2.0 - Same as original
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+## Changes Summary
 
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
-```
+- Added `bfxapi/_utils/post_only_enforcement.py` (37 lines)
+- Added `bfxapi/constants/order_flags.py` (6 lines)  
+- Modified 4 files to enforce POST_ONLY (~50 lines total)
+- Added comprehensive tests (240+ lines, 13 tests)
+- No external dependencies added

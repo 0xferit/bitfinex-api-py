@@ -43,24 +43,41 @@ bfx.wss.run()
 
 **Core Function** (`bfxapi/_utils/post_only_enforcement.py`):
 ```python
-def enforce_post_only(flags: Optional[int]) -> int:
-    """Ensure POST_ONLY flag is set, preserving other flags."""
+def enforce_post_only(flags: Optional[int], order_type: Optional[str] = None) -> int:
+    """
+    Ensure POST_ONLY flag is set, preserving other flags.
+    Validates that order type is compatible with POST_ONLY.
+    
+    Raises ValueError if order type contains 'MARKET' (incompatible with POST_ONLY).
+    """
+    if order_type and 'MARKET' in order_type.upper():
+        raise ValueError(
+            f"Order type '{order_type}' is incompatible with POST_ONLY enforcement. "
+            "POST_ONLY only works with limit-style orders."
+        )
     return POST_ONLY | (flags if flags is not None else 0)
 ```
 
+**Hardening Features:**
+- Rejects MARKET orders with clear error message
+- Case-insensitive order type validation
+- Preserves all existing flags using bitwise OR
+
 **Layer 1 - REST API** (`rest_auth_endpoints.py`):
-- Line 106: `flags = enforce_post_only(flags)` in `submit_order()`
-- Line 146: `flags = enforce_post_only(flags)` in `update_order()` 
+- Line 106: `flags = enforce_post_only(flags, order_type=type)` in `submit_order()` - validates order type
+- Line 146: `flags = enforce_post_only(flags)` in `update_order()` - no type validation needed
 - Funding offers explicitly skip enforcement (no flags sent)
 
 **Layer 2 - Middleware** (`middleware.py`):
-- Lines 66-72: Intercepts all `order/submit` and `order/update` endpoints
-- Forces POST_ONLY flag before JSON serialization
+- Lines 66-77: Intercepts all `order/submit` and `order/update` endpoints
+- Line 73: `enforce_post_only(flags, order_type)` for submit - validates order type
+- Line 77: `enforce_post_only(flags)` for update
+- Includes maintenance note for endpoint pattern updates
 - Catch-all protection layer
 
 **Layer 3 - WebSocket Input** (`bfx_websocket_inputs.py`):
-- Line 32: Forces POST_ONLY in `submit_order()`
-- Line 71: Forces POST_ONLY in `update_order()`
+- Line 32: `enforce_post_only(flags, order_type=type)` in `submit_order()` - validates order type
+- Line 71: `enforce_post_only(flags)` in `update_order()`
 - Funding offers skip enforcement (line 114)
 
 **Layer 4 - WebSocket Client** (`bfx_websocket_client.py`):
@@ -108,12 +125,13 @@ grep -n "enforce_post_only" bfxapi/websocket/_client/bfx_websocket_client.py
 
 **Post-Only Enforcement Files:**
 ```
-bfxapi/_utils/post_only_enforcement.py        # NEW: 16 lines
+bfxapi/_utils/post_only_enforcement.py        # NEW: 37 lines (with validation)
 bfxapi/constants/order_flags.py               # NEW: 6 lines  
-bfxapi/rest/_interface/middleware.py          # +10 lines
+bfxapi/rest/_interface/middleware.py          # +13 lines (with notes)
 bfxapi/rest/_interfaces/rest_auth_endpoints.py # +13 lines
 bfxapi/websocket/_client/bfx_websocket_inputs.py # +15 lines
 bfxapi/websocket/_client/bfx_websocket_client.py # +8 lines
+tests/test_post_only_enforcement.py           # 240+ lines (13 tests)
 ```
 
 **Heartbeat Events Files:**
@@ -126,16 +144,37 @@ README.md                                      # +27 lines
 ```
 
 ### Code Delta Summary
-- **Post-Only Enforcement**: ~70 lines of production code
+- **Post-Only Enforcement**: ~92 lines of production code (with validation)
 - **Heartbeat Events**: ~40 lines of production code  
-- **Core safety logic**: 16 lines (the `enforce_post_only` function)
+- **Core safety logic**: 37 lines (the `enforce_post_only` function with market order validation)
+- **Tests**: 240+ lines, 13 comprehensive tests
 - **No external dependencies added**
+
+## PyPI Publishing
+
+This package uses GitHub Actions with Trusted Publishing (OIDC) for secure, automated PyPI releases.
+
+### Publishing Process
+
+1. **Update version in setup.py**
+2. **Create Git tag and push:**
+   ```bash
+   git tag v3.0.5.post2
+   git push origin v3.0.5.post2
+   ```
+3. **Create GitHub Release** - triggers automatic PyPI upload via `.github/workflows/publish.yml`
+
+### Configuration
+- **PyPI Project**: bitfinex-api-py-postonly
+- **Workflow**: `.github/workflows/publish.yml`
+- **No API tokens** - Uses OIDC authentication
 
 ## Important Notes
 
 ⚠️ **This is a SAFETY fork, not for bypassing exchange rules**
 
 - All orders will be maker-only (won't cross spread)
+- MARKET orders are rejected with clear error message
 - Monitor heartbeats to ensure connection is alive
 - Funding offers are not affected by POST_ONLY enforcement
 - The enforcement cannot be disabled without modifying the source code
